@@ -39,6 +39,7 @@ public class MainActivity extends ActionBarActivity implements SalutDataCallback
     SalutDataCallback callback;
     private boolean isHost = false;
 
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -79,30 +80,32 @@ public class MainActivity extends ActionBarActivity implements SalutDataCallback
     {
         this.isHost = true;
 
-
         if(!network.isRunningAsHost)
         {
+
             network.startNetworkService(new SalutDeviceCallback() {
                 @Override
                 public void call(SalutDevice salutDevice) {
                     Toast.makeText(getApplicationContext(), "Device: " + salutDevice.instanceName + " connected.", Toast.LENGTH_SHORT).show();
+
+                    if(network.registeredClients.size()>0)
+                    {
+                        Log.i(TAG, "Some devices registered to host: " + network.getReadableRegisteredNames().toString());
+                    }
+
+                    Log.i(TAG, "Host attempting to send some data");
+                    Message myMessage = new Message();
+                    myMessage.description = "See you on the other side!";
+
+                    network.sendToAllDevices(myMessage, new SalutCallback() {
+                        @Override
+                        public void call() {
+                            Log.e(TAG, "Oh no! The data failed to send.");
+                        }
+                    });
                 }
             });
 
-            //if devices have registered to this host
-            if(network.registeredClients.size() > 0)
-            {
-                Log.i(TAG, "Host found some devices");
-                Message myMessage = new Message();
-                myMessage.description = "See you on the other side!";
-
-                network.sendToAllDevices(myMessage, new SalutCallback() {
-                    @Override
-                    public void call() {
-                        Log.e(TAG, "Oh no! The data failed to send.");
-                    }
-                });
-            }
 
             hostingBtn.setText("Stop Service");
             discoverBtn.setAlpha(0.5f);
@@ -128,26 +131,21 @@ public class MainActivity extends ActionBarActivity implements SalutDataCallback
                 public void call() {
                     Toast.makeText(getApplicationContext(), "Device: " + network.foundDevices.get(0).instanceName + " found.", Toast.LENGTH_SHORT).show();
 
+                    SalutDevice host = network.foundDevices.get(0);
+
+                    network.registerWithHost(host, new SalutCallback() {
+                        @Override
+                        public void call() {
+                            Log.d(TAG, "We're now registered.");
+                        }
+                    }, new SalutCallback() {
+                        @Override
+                        public void call() {
+                            Log.d(TAG, "We failed to register.");
+                        }
+                    });
                 }
             }, true);
-
-
-            if(network.foundDevices.size() > 0)
-            {
-                SalutDevice host = network.foundDevices.get(0);
-
-                network.registerWithHost(host, new SalutCallback() {
-                    @Override
-                    public void call() {
-                        Log.d(TAG, "We're now registered.");
-                    }
-                }, new SalutCallback() {
-                    @Override
-                    public void call() {
-                        Log.d(TAG, "We failed to register.");
-                    }
-                });
-            }
 
             discoverBtn.setText("Stop Discovery");
             hostingBtn.setAlpha(0.5f);
