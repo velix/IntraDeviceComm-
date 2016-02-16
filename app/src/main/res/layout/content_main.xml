@@ -31,13 +31,22 @@
         android:layout_marginStart="21dp"
         android:layout_marginTop="61dp" />
 
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:textAppearance="?android:attr/textAppearanceLarge"
-        android:text="Devices"
-        android:id="@+id/devicesList"
-        android:layout_below="@+id/discover_services"
+    <Button
+        android:id="@+id/disconnect"
+        android:text="@string/disconnect"
+        android:layout_width="fill_parent"
+        android:layout_height="50dp"
+        android:layout_centerVertical="true"
         android:layout_alignStart="@+id/discover_services"
-        android:layout_marginTop="58dp" />
+        android:layout_alignEnd="@+id/discover_services" />
+
+    <!--<TextView-->
+        <!--android:layout_width="match_parent"-->
+        <!--android:layout_height="match_parent"-->
+        <!--android:textAppearance="?android:attr/textAppearanceLarge"-->
+        <!--android:text="Devices"-->
+        <!--android:id="@+id/devicesList"-->
+        <!--android:layout_below="@+id/discover_services"-->
+        <!--android:layout_alignStart="@+id/discover_services"-->
+        <!--android:layout_marginTop="58dp" />-->
 </RelativeLayout>

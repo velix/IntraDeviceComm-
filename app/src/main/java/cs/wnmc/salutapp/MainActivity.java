@@ -86,23 +86,10 @@ public class MainActivity extends ActionBarActivity implements SalutDataCallback
             network.startNetworkService(new SalutDeviceCallback() {
                 @Override
                 public void call(SalutDevice salutDevice) {
-                    Toast.makeText(getApplicationContext(), "Device: " + salutDevice.instanceName + " connected.", Toast.LENGTH_SHORT).show();
+//                    Toast.makeText(getApplicationContext(), "Device: " + salutDevice.instanceName + " connected.", Toast.LENGTH_SHORT).show();
+                    Log.i(TAG, "Client: " + salutDevice.instanceName+ " registered");
 
-                    if(network.registeredClients.size()>0)
-                    {
-                        Log.i(TAG, "Some devices registered to host: " + network.getReadableRegisteredNames().toString());
-                    }
-
-                    Log.i(TAG, "Host attempting to send some data");
-                    Message myMessage = new Message();
-                    myMessage.description = "See you on the other side!";
-
-                    network.sendToAllDevices(myMessage, new SalutCallback() {
-                        @Override
-                        public void call() {
-                            Log.e(TAG, "Oh no! The data failed to send.");
-                        }
-                    });
+                    sendTestMessage();
                 }
             });
 
@@ -120,6 +107,30 @@ public class MainActivity extends ActionBarActivity implements SalutDataCallback
         }
     }
 
+    private void sendTestMessage()
+    {
+            Log.i(TAG, "Host attempting to send some data");
+            Message myMessage = new Message();
+            myMessage.description = "See you on the other side!";
+
+            network.sendToAllDevices(myMessage, new SalutCallback() {
+                @Override
+                public void call() {
+                    Log.e(TAG, "Oh no! The data failed to send.");
+                }
+            });
+
+//        SalutDevice deviceToSendTo = network.registeredClients.get(0);
+//
+//        network.sendToDevice(deviceToSendTo, myMessage, new SalutCallback() {
+//            @Override
+//            public void call() {
+//                Log.e(TAG, "Oh no! The data failed to send.");
+//            }
+//        });
+
+    }
+
     //CLIENT
     private void discoverServices()
     {
@@ -129,9 +140,9 @@ public class MainActivity extends ActionBarActivity implements SalutDataCallback
             network.discoverNetworkServices(new SalutCallback() {
                 @Override
                 public void call() {
-                    Toast.makeText(getApplicationContext(), "Device: " + network.foundDevices.get(0).instanceName + " found.", Toast.LENGTH_SHORT).show();
-
                     SalutDevice host = network.foundDevices.get(0);
+//                    Toast.makeText(getApplicationContext(), "Device: " + host.instanceName + " found.", Toast.LENGTH_SHORT).show();
+                    Log.i(TAG, "Host: " + host.instanceName + " found.");
 
                     network.registerWithHost(host, new SalutCallback() {
                         @Override
@@ -146,6 +157,7 @@ public class MainActivity extends ActionBarActivity implements SalutDataCallback
                     });
                 }
             }, true);
+
 
             discoverBtn.setText("Stop Discovery");
             hostingBtn.setAlpha(0.5f);
@@ -200,16 +212,32 @@ public class MainActivity extends ActionBarActivity implements SalutDataCallback
         {
             discoverServices();
         }
+        else if (v.getId() == R.id.disconnect)
+        {
+            Button disconnectBtn = (Button) findViewById(R.id.disconnect);
+            disconnectBtn.setText("Disconnect");
+            disconnectBtn.setAlpha(1f);
+            disconnectBtn.setClickable(false);
+
+            onDestroy();
+
+            disconnectBtn.setClickable(true);
+        }
     }
+
+
 
     @Override
     public void onDestroy() {
         super.onDestroy();
 
         if(this.isHost)
-            network.stopNetworkService(true);
+            //pass whether to close wifi
+            network.stopNetworkService(false);
         else
-            network.unregisterClient(true);
+            //can pass callback onSuccess, onFailure
+            //single argument form disables Wifi
+            network.unregisterClient(false);
     }
 
 }
