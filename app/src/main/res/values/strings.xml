@@ -4,4 +4,7 @@
     <string name="start">Start Service</string>
     <string name="discover_services">Discover</string>
     <string name="disconnect">Disconnect</string>
+
+    <string name="registered_devices">Registered Devices</string>
+    <string name ="send_file">Send File</string>
 </resources>
