@@ -1,5 +1,10 @@
 package cs.wnmc.salutapp;
 
+import android.app.Fragment;
+import android.app.FragmentManager;
+import android.app.FragmentTransaction;
+import android.content.Intent;
+import android.net.Uri;
 import android.support.v7.app.ActionBarActivity;
 import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
@@ -24,13 +29,14 @@ import java.io.IOException;
 import java.util.ArrayList;
 
 
-public class MainActivity extends ActionBarActivity implements SalutDataCallback, View.OnClickListener{
+public class MainActivity extends ActionBarActivity implements SalutDataCallback, View.OnClickListener, HostService.onClientRegisteredListener
+{
 
     /*
         This simple activity demonstrates how to use the Salut library from a host and client perspective.
      */
 
-    public static final String TAG = "SalutTestApp";
+    public static final String TAG = "Salut-MainActivity";
     public SalutDataReceiver dataReceiver;
     public SalutServiceData serviceData;
     public Salut network;
@@ -39,6 +45,10 @@ public class MainActivity extends ActionBarActivity implements SalutDataCallback
     SalutDataCallback callback;
     private boolean isHost = false;
 
+
+    private FragmentManager fragmentManager;
+    private FragmentTransaction fragmentTransaction;
+    private HostService hostService;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -51,6 +61,9 @@ public class MainActivity extends ActionBarActivity implements SalutDataCallback
         hostingBtn.setOnClickListener(this);
         discoverBtn.setOnClickListener(this);
 
+        //fragment management
+        fragmentManager = getFragmentManager();
+        fragmentTransaction = fragmentManager.beginTransaction();
 
         /*Create a data receiver object that will bind the callback
         with some instantiated object from our app. */
@@ -76,20 +89,31 @@ public class MainActivity extends ActionBarActivity implements SalutDataCallback
     }
 
     //HOST
-    private void setupNetwork()
+    protected void setupNetwork()
     {
+
+
         this.isHost = true;
 
         if(!network.isRunningAsHost)
         {
+            //add fragment
+            hostService = HostService.newInstance("", "");
+            Log.d(TAG, "Attempting to add MainActivity layout");
+            fragmentTransaction.add(R.id.main_container, hostService);
+            Log.d(TAG, "Attempting to commit fragment's layout");
+            fragmentTransaction.commit();
 
             network.startNetworkService(new SalutDeviceCallback() {
                 @Override
                 public void call(SalutDevice salutDevice) {
 //                    Toast.makeText(getApplicationContext(), "Device: " + salutDevice.instanceName + " connected.", Toast.LENGTH_SHORT).show();
-                    Log.i(TAG, "Client: " + salutDevice.instanceName+ " registered");
+                    Log.i(TAG, "Client: " + salutDevice.instanceName + " registered");
 
-                    sendTestMessage();
+//                    HostService hostService =  (HostService)fragmentManager.findFragmentById(R.id.hostServiceFragment);
+//                    Log.d(TAG, "Attempting to update registered clients list on fragment");
+//                    hostService.updateClientsList(salutDevice.instanceName);
+
                 }
             });
 
@@ -104,10 +128,11 @@ public class MainActivity extends ActionBarActivity implements SalutDataCallback
             hostingBtn.setText("Start Service");
             discoverBtn.setAlpha(1f);
             discoverBtn.setClickable(true);
+            fragmentManager.beginTransaction().remove(hostService).commit();
         }
     }
 
-    private void sendTestMessage()
+    protected void sendTestMessage()
     {
             Log.i(TAG, "Host attempting to send some data");
             Message myMessage = new Message();
@@ -137,22 +162,27 @@ public class MainActivity extends ActionBarActivity implements SalutDataCallback
 
         if(!network.isRunningAsHost && !network.isDiscovering)
         {
+
             network.discoverNetworkServices(new SalutCallback() {
                 @Override
                 public void call() {
                     SalutDevice host = network.foundDevices.get(0);
-//                    Toast.makeText(getApplicationContext(), "Device: " + host.instanceName + " found.", Toast.LENGTH_SHORT).show();
-                    Log.i(TAG, "Host: " + host.instanceName + " found.");
+                    Toast.makeText(getApplicationContext(), "Device: " + host.instanceName + " found.", Toast.LENGTH_SHORT).show();
+                    Log.d(TAG, "Host: " + host.instanceName + " found.");
+
+                    Toast.makeText(getApplicationContext(), "Attempting to register with host", Toast.LENGTH_SHORT).show();
 
                     network.registerWithHost(host, new SalutCallback() {
                         @Override
                         public void call() {
                             Log.d(TAG, "We're now registered.");
+                            Toast.makeText(getApplicationContext(), "Registered with host", Toast.LENGTH_SHORT).show();
                         }
                     }, new SalutCallback() {
                         @Override
                         public void call() {
                             Log.d(TAG, "We failed to register.");
+                            Toast.makeText(getApplicationContext(), "FAILED to register with host", Toast.LENGTH_SHORT).show();
                         }
                     });
                 }
@@ -183,6 +213,7 @@ public class MainActivity extends ActionBarActivity implements SalutDataCallback
     @Override
     public void onDataReceived(Object data) {
         Log.d(TAG, "Received network data.");
+        Toast.makeText(getApplicationContext(), "Received data successfully", Toast.LENGTH_SHORT).show();
         try
         {
             Message newMessage = LoganSquare.parse(data.toString(), Message.class);
@@ -207,6 +238,7 @@ public class MainActivity extends ActionBarActivity implements SalutDataCallback
         if(v.getId() == R.id.hosting_button)
         {
             setupNetwork();
+
         }
         else if(v.getId() == R.id.discover_services)
         {
@@ -240,4 +272,8 @@ public class MainActivity extends ActionBarActivity implements SalutDataCallback
             network.unregisterClient(false);
     }
 
+    @Override
+    public void onClientRegistered(String device) {
+
+    }
 }
