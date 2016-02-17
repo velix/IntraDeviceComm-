@@ -1,13 +1,19 @@
 package cs.wnmc.salutapp;
 
+import android.Manifest;
+import android.app.Activity;
 import android.app.Fragment;
 import android.app.FragmentManager;
 import android.app.FragmentTransaction;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.net.Uri;
+import android.os.Environment;
+import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.ActionBarActivity;
 import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
+import android.util.Base64;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -25,16 +31,22 @@ import com.peak.salut.SalutDataReceiver;
 import com.peak.salut.SalutDevice;
 import com.peak.salut.SalutServiceData;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 
 
 public class MainActivity extends ActionBarActivity implements SalutDataCallback, View.OnClickListener, HostService.onClientRegisteredListener
 {
 
-    /*
-        This simple activity demonstrates how to use the Salut library from a host and client perspective.
-     */
+    private static final int REQUEST_EXTERNAL_STORAGE = 1;
+    private static String[] PERMISSIONS_STORAGE = {
+            Manifest.permission.READ_EXTERNAL_STORAGE,
+            Manifest.permission.WRITE_EXTERNAL_STORAGE
+    };
 
     public static final String TAG = "Salut-MainActivity";
     public SalutDataReceiver dataReceiver;
@@ -97,22 +109,23 @@ public class MainActivity extends ActionBarActivity implements SalutDataCallback
 
         if(!network.isRunningAsHost)
         {
+
             //add fragment
-            hostService = HostService.newInstance("", "");
+            hostService = HostService.newInstance();
             Log.d(TAG, "Attempting to add MainActivity layout");
             fragmentTransaction.add(R.id.main_container, hostService);
             Log.d(TAG, "Attempting to commit fragment's layout");
-            fragmentTransaction.commit();
+            fragmentTransaction.commitAllowingStateLoss();
 
             network.startNetworkService(new SalutDeviceCallback() {
                 @Override
                 public void call(SalutDevice salutDevice) {
 //                    Toast.makeText(getApplicationContext(), "Device: " + salutDevice.instanceName + " connected.", Toast.LENGTH_SHORT).show();
-                    Log.i(TAG, "Client: " + salutDevice.instanceName + " registered");
+                    String client = salutDevice.instanceName;
+                    Log.i(TAG, "Client: " + client + " registered");
 
-//                    HostService hostService =  (HostService)fragmentManager.findFragmentById(R.id.hostServiceFragment);
-//                    Log.d(TAG, "Attempting to update registered clients list on fragment");
-//                    hostService.updateClientsList(salutDevice.instanceName);
+                    Log.d(TAG, "Attempting to update registered clients list on fragment");
+                    hostService.updateClientsList();
 
                 }
             });
@@ -128,32 +141,19 @@ public class MainActivity extends ActionBarActivity implements SalutDataCallback
             hostingBtn.setText("Start Service");
             discoverBtn.setAlpha(1f);
             discoverBtn.setClickable(true);
-            fragmentManager.beginTransaction().remove(hostService).commit();
+            fragmentManager.beginTransaction().remove(hostService).commitAllowingStateLoss();
         }
     }
 
-    protected void sendTestMessage()
+    protected void send(Message msg)
     {
-            Log.i(TAG, "Host attempting to send some data");
-            Message myMessage = new Message();
-            myMessage.description = "See you on the other side!";
-
-            network.sendToAllDevices(myMessage, new SalutCallback() {
-                @Override
-                public void call() {
-                    Log.e(TAG, "Oh no! The data failed to send.");
-                }
-            });
-
-//        SalutDevice deviceToSendTo = network.registeredClients.get(0);
-//
-//        network.sendToDevice(deviceToSendTo, myMessage, new SalutCallback() {
-//            @Override
-//            public void call() {
-//                Log.e(TAG, "Oh no! The data failed to send.");
-//            }
-//        });
-
+        Log.i(TAG, "Host attempting to send a God message");
+        network.sendToAllDevices(msg, new SalutCallback() {
+            @Override
+            public void call() {
+                Log.e(TAG, "Oh no! The data failed to send.");
+            }
+        });
     }
 
     //CLIENT
@@ -198,7 +198,7 @@ public class MainActivity extends ActionBarActivity implements SalutDataCallback
             network.stopServiceDiscovery(true);
             discoverBtn.setText("Discover Services");
             hostingBtn.setAlpha(1f);
-            hostingBtn.setClickable(false);
+            hostingBtn.setClickable(true);
         }
     }
 
@@ -217,8 +217,28 @@ public class MainActivity extends ActionBarActivity implements SalutDataCallback
         try
         {
             Message newMessage = LoganSquare.parse(data.toString(), Message.class);
-            Log.d(TAG, newMessage.description);  //See you on the other side!
-            //Do other stuff with data.
+            Log.d(TAG, "Data parsed");  //See you on the other side!
+            if(newMessage.encodedMessage == null)
+            {
+                Log.d(TAG, "Dun goofed");
+            }
+            else
+            {
+                byte[] messageBytes = Base64.decode(newMessage.encodedMessage, Base64.DEFAULT);
+                try {
+                    File file = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+                            + File.separator + newMessage.name);
+                    FileOutputStream fos = new FileOutputStream(file);
+                    fos.write(messageBytes, 0, messageBytes.length);
+                    fos.close();
+                }
+                catch(IOException e)
+                {
+                    e.printStackTrace();
+                    Log.e(TAG,"IOException while creating file Output Stream");
+                }
+            }
+
         }
         catch (IOException ex)
         {
@@ -275,5 +295,19 @@ public class MainActivity extends ActionBarActivity implements SalutDataCallback
     @Override
     public void onClientRegistered(String device) {
 
+    }
+
+    public static void verifyStoragePermissions(Activity activity) {
+        // Check if we have write permission
+        int permission = ActivityCompat.checkSelfPermission(activity, Manifest.permission.WRITE_EXTERNAL_STORAGE);
+
+        if (permission != PackageManager.PERMISSION_GRANTED) {
+            // We don't have permission so prompt the user
+            ActivityCompat.requestPermissions(
+                    activity,
+                    PERMISSIONS_STORAGE,
+                    REQUEST_EXTERNAL_STORAGE
+            );
+        }
     }
 }
